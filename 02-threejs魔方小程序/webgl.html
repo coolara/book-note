@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="lib/compile.js"></script>
+    <script src="lib/matrix4.js"></script>
+    <script src="lib/webgl.js"></script>
+    <!--顶点着色器程序-->
+    <!-- 这段顶点着色器接收从 JavaScript 程序中传入的顶点、颜色、法向量以及一些变换矩阵，然后计算变换之后的新的顶点、颜色和法向量数据，并将其传输给片元着色器。 -->
+    <script id="shader-vs" type="x-shader/x-vertex">
+      attribute vec4 a_Position;//顶点
+      attribute vec4 a_Color;//颜色
+      attribute vec4 a_Normal;//法向量
+
+      uniform mat4 u_MvpMatrix;//投影矩阵
+      uniform mat4 u_NormalMatrix;//法向量变换矩阵
+      uniform mat4 u_ModelMatrix;//模型矩阵
+
+      varying vec3 v_Position;
+      varying vec4 v_Color;
+      varying vec3 v_Normal;
+      void main() {
+          gl_Position = u_MvpMatrix * a_Position;
+          v_Position = vec3(u_ModelMatrix * a_Position);
+          v_Color = a_Color;
+          v_Normal = normalize(vec3(u_NormalMatrix * a_Normal));
+      }
+    </script>
+    <!--片元着色器程序-->
+    <!-- 简单来说就是物体表面的颜色是漫反射光（ diffuse ）、环境光（ ambient ）、自发光（ emissive ）和镜面反射光（ specular ）等光照作用的总和 -->
+    <!-- 漫反射光颜色diffuse = 入射光颜色 * 表面颜色 * 入射角余弦 -->
+    <!-- 这段片元着色器主要是接收变换后的物体轮廓和颜色信息以及设定的光源信息，依据一系列模拟现实光照的规则，计算出最终的片元颜色 -->
+    <script id="shader-fs" type="x-shader/x-fragment">
+      precision mediump float;
+      uniform vec3 u_LightColor;
+      uniform vec3 u_LightPosition;
+      uniform vec3 u_AmbientLight;
+
+      varying vec3 v_Position;//变换后的顶点坐标
+      varying vec4 v_Color;
+      varying vec3 v_Normal;//变换后的法向量
+      void main() {
+          vec3 normal = normalize(v_Normal);
+          vec3 lightDirection = normalize(u_LightPosition - v_Position);
+          float nDotL = max(dot(lightDirection,normal),0.0);//如果反射角大于90度，则该光线无法照射到该片元。
+          vec3 diffuse = u_LightColor * v_Color.rgb * nDotL;
+          vec3 ambient = u_AmbientLight * v_Color.rgb;
+          gl_FragColor = vec4(diffuse + ambient, v_Color.a);
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="retina" style="width: 100%"></canvas>
+  </body>
+</html>
